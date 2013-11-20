@@ -1,5 +1,7 @@
 package ru.smartislav.eulerism
 
+import _root_.scala.collection.{mutable, BitSet}
+
 package object scala {
 
   def merge[A: Ordering](a: Iterable[A], b: Iterable[A]): Vector[A] = merge(a.iterator, b.iterator)
@@ -29,4 +31,11 @@ package object scala {
     ret.result()
   }
 
+  def eratosthenesSieveUpTo(max: Int): BitSet = {
+    val sieve = mutable.BitSet.empty
+    for (i <- 2 to (max + 1) / 2 if !sieve(i)) {
+      sieve ++= Range.inclusive(2 * i, max, i)
+    }
+    sieve.toImmutable
+  }
 }
