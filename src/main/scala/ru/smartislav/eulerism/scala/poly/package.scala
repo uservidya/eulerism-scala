@@ -2,13 +2,13 @@ package ru.smartislav.eulerism.scala
 
 import spire.math.Rational
 import scalaz.{Cord, Show}
-import scala.collection.immutable.SortedSet
-import scala.collection.breakOut
+import scala.collection.SortedSet
+import scala.collection.{SortedMap, breakOut}
 import scala.annotation.tailrec
 
 package object poly {
 
-  class Monomial private(val c: Rational, val powers: Map[String, Rational]) {
+  class Monomial private(val c: Rational, val powers: SortedMap[String, Rational]) {
     override def toString: String = Monomial.DebugShow.shows(this)
 
     def *(factor: Rational): Monomial = Monomial(c * factor, powers)
@@ -16,12 +16,12 @@ package object poly {
     def /(factor: Rational): Monomial = Monomial(c / factor, powers)
 
     def +(other: Monomial): Monomial = {
-      require(isSimilarTo(other))
+      require(isSimilarTo(other), s"Can't add non-similar monomials $this and $other")
       Monomial(c + other.c, powers)
     }
 
     def -(other: Monomial): Monomial = {
-      require(isSimilarTo(other))
+      require(isSimilarTo(other), s"Can't subtract non-similar monomials $this and $other")
       Monomial(c - other.c, powers)
     }
 
@@ -47,20 +47,27 @@ package object poly {
 
     def isSimilarTo(other: Monomial): Boolean = powers == other.powers
 
-    def isDivisible(other: Monomial): Boolean = other.powers.forall({
-      case (v, p) => powers.getOrElse(v, Rational.zero) < p
+    def isDivisibleBy(other: Monomial): Boolean = other.c != Rational.zero && other.powers.forall({
+      case (v, p) => powers.getOrElse(v, Rational.zero) >= p
     })
+
+    def lcm(other: Monomial): Monomial = {
+      val vars = powers.map(_._1) ++ other.powers.map(_._1)
+      Monomial(c * other.c / c.gcd(other.c), vars.map({
+        v => (v, Array(powers.getOrElse(v, Rational.zero), other.powers.getOrElse(v, Rational.zero)).max)
+      })(breakOut): SortedMap[String, Rational])
+    }
   }
 
   object Monomial {
-    val zero = new Monomial(Rational.zero, Map.empty)
+    val zero = new Monomial(Rational.zero, SortedMap.empty)
 
-    def apply(c: Rational, powers: Map[String, Rational]): Monomial = {
+    def apply(c: Rational, powers: SortedMap[String, Rational]): Monomial = {
       if (c == Rational.zero || powers.isEmpty) Monomial.zero
       else new Monomial(c, powers)
     }
 
-    def apply(c: Rational, powers: (String, Rational)*): Monomial = Monomial(c, Map(powers: _*))
+    def apply(c: Rational, powers: (String, Rational)*): Monomial = Monomial(c, SortedMap(powers: _*))
 
     object ExactOrdering extends Ordering[Monomial] {
       def compare(x: Monomial, y: Monomial): Int = {
@@ -75,9 +82,13 @@ package object poly {
 
     object SimilarityOrdering extends Ordering[Monomial] {
       def compare(x: Monomial, y: Monomial): Int = {
-        val commonVars = x.powers.keySet ++ y.powers.keySet
-        val xPowers = commonVars map (x.powers.getOrElse(_, Rational.zero))
-        val yPowers = commonVars map (y.powers.getOrElse(_, Rational.zero))
+
+        val commonVars: SortedSet[String] = x.powers.keySet union y.powers.keySet
+        val xPowers: Seq[Rational] = (commonVars map (x.powers.getOrElse(_, Rational.zero)))(breakOut)
+        val yPowers: Seq[Rational] = (commonVars map (y.powers.getOrElse(_, Rational.zero)))(breakOut)
+
+//        println(s"xPowers: $xPowers")
+//        println(s"yPowers: $yPowers")
 
         Ordering.Iterable[Rational].compare(xPowers, yPowers)
       }
@@ -137,12 +148,8 @@ package object poly {
       Polynomial(monomials map (_ / m): _*)
     }
 
-    def /(p: Polynomial): Polynomial = {
-      ???
-    }
-
     def isReducible(p: Polynomial): Boolean = {
-      lt.isDivisible(p.lt)
+      lt.isDivisibleBy(p.lt)
     }
 
     def reduce(p: Polynomial): Polynomial = {
@@ -153,18 +160,22 @@ package object poly {
 
     @tailrec
     final def reduceByBasis(basis: Seq[Polynomial]): Polynomial = {
-      def step(b: Seq[Polynomial], reduced: Boolean): (Polynomial, Boolean) = {
+      def step(reduced: Boolean): (Polynomial, Boolean) = {
         if (this != Polynomial.zero)
-          for (p <- b)
-            if (isReducible(p))
-              (reduce(p), true)
+          for (p <- basis.find(isReducible))
+            return (reduce(p), true)
         (this, reduced)
       }
-      val (reducedPoly: Polynomial, reduced: Boolean) = step(basis, false)
+      val (reducedPoly: Polynomial, reduced: Boolean) = step(reduced = false)
       if (reduced)
         reducedPoly.reduceByBasis(basis)
       else
         reducedPoly
+    }
+
+    def sPoly(other: Polynomial): Polynomial = {
+      val glcm = this.lt lcm other.lt
+      this * (glcm / this.lt) - other * (glcm / other.lt)
     }
   }
 
@@ -177,14 +188,43 @@ package object poly {
     }
 
     def ordered(ms: Seq[Monomial]): Polynomial = {
-      if (ms.isEmpty) zero
-      else new Polynomial(ms)
+      val nonZero = ms.filterNot(_ == Monomial.zero)
+      if (nonZero.isEmpty) zero
+      else new Polynomial(nonZero)
     }
 
     implicit object DebugShow extends Show[Polynomial] {
       override def show(p: Polynomial): Cord = Cord.mkCord(" + ", (p.monomials map Monomial.DebugShow.show).toSeq: _*)
     }
 
-  }
+    def groebnerBasis(ps: Seq[Polynomial]): Seq[Polynomial] = gröbnerBasis(ps)
 
+    def gröbnerBasis(ps: Seq[Polynomial]): Seq[Polynomial] = buchbergersAlgorithm(ps)
+
+    def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
+      @tailrec
+      def build(checked: Seq[Polynomial], left: Seq[Polynomial]): Seq[Polynomial] = {
+        if (left.isEmpty) {
+          checked
+        } else {
+          build()
+        }
+      }
+
+
+      def checkOne(f: Polynomial): Seq[Polynomial] = {
+        if (ps.isEmpty) {
+          Seq.empty
+        } else {
+          var ret = Seq.empty
+          for (p <- ps.tails; if p.nonEmpty) {
+            val s = (f sPoly p.head) reduceByBasis (p ++ ret)
+            if (s != Polynomial.zero)
+              ret :+= s
+          }
+        }
+        ???
+      }
+    }
+  }
 }

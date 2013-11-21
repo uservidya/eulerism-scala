@@ -8,7 +8,7 @@ object Test extends App {
     Monomial(Rational(4, 5), "y" -> Rational(1, 2), "z" -> Rational(2)))
 
   val poly2 = Polynomial(
-    Monomial(Rational(5, 4), "y" -> Rational(1, 2), "z" -> Rational(2))
+    Monomial(Rational.one, "y" -> Rational(1, 2), "x" -> Rational.one)
   )
 
   println(s"poly1: $poly1")
@@ -19,7 +19,8 @@ object Test extends App {
   println(s"product: ${poly1 * poly2}")
   println(s"reduction by <poly2>: ${poly1.reduceByBasis(Seq(poly2))}")
 
-  //  println(Monomial(Rational.one, "x" -> Rational(2)) * Monomial(Rational.zero, "y" -> Rational.one))
+  println(s"LT(poly1): ${poly1.lt}")
+  println(s"LT(poly2): ${poly2.lt}")
 
-
+  println(Monomial(Rational.one, "x" -> Rational(2)) isDivisibleBy Monomial(Rational.one, "x" -> Rational.one))
 }
