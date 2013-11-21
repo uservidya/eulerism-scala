@@ -5,30 +5,25 @@ import _root_.scala.collection.{mutable, BitSet}
 
 package object scala {
 
-  def merge[A, That](a: Iterable[A], b: Iterable[A])
-                    (implicit ord: Ordering[A], bf: CanBuildFrom[That, A, That]): That = {
+  def merge[A, That[_]](a: Iterable[A], b: Iterable[A])
+                       (implicit ord: Ordering[A], bf: CanBuildFrom[_, A, That[A]]): That[A] = {
     merge(a.iterator, b.iterator)(ord, bf)
   }
 
-  def merge[A, That](a: Iterator[A], b: Iterator[A])
-                    (implicit ord: Ordering[A], bf: CanBuildFrom[That, A, That]): That = {
+  def merge[A, That[_]](a: Iterator[A], b: Iterator[A])
+                       (implicit ord: Ordering[A], bf: CanBuildFrom[_, A, That[A]]): That[A] = {
     mergeWith(a, b)({
       (aa, bb) => aa
     })(ord, bf)
   }
 
-  def mergeWith[A, That](a: Iterable[A], b: Iterable[A])(mergeFn: (A, A) => A)
-                        (implicit ord: Ordering[A], bf: CanBuildFrom[That, A, That]): That = {
+  def mergeWith[A, That[_]](a: Iterable[A], b: Iterable[A])(mergeFn: (A, A) => A)
+                           (implicit ord: Ordering[A], bf: CanBuildFrom[_, A, That[A]]): That[A] = {
     mergeWith(a.iterator, b.iterator)(mergeFn)(ord, bf)
   }
 
-  def mergeWith[A, That](a: Iterator[A], b: Iterator[A])(mergeFn: (A, A) => A)
-                        (ord: Ordering[A])(bf: CanBuildFrom[That, A, That]): That = {
-    mergeWith(a, b)(mergeFn)(ord, bf)
-  }
-
-  def mergeWith[A, That](a: Iterator[A], b: Iterator[A])(mergeFn: (A, A) => A)
-                        (implicit ord: Ordering[A], bf: CanBuildFrom[That, A, That]): That = {
+  def mergeWith[A, That[_]](a: Iterator[A], b: Iterator[A])(mergeFn: (A, A) => A)
+                           (implicit ord: Ordering[A], bf: CanBuildFrom[_, A, That[A]]) = {
     val ret = bf()
 
     val ia = a.buffered
@@ -48,6 +43,23 @@ package object scala {
     while (ia.hasNext) ret += ia.next
     while (ib.hasNext) ret += ib.next
 
+    ret.result()
+  }
+
+  def groupRuns[X, That[_]](xs: Iterator[X])(groupFn: Seq[X] => X)(implicit eqv: Equiv[X], bf: CanBuildFrom[_, X, That[X]]): That[X] = {
+    val ret = bf()
+    var currentRun: List[X] = Nil
+    while (xs.hasNext) {
+      val x = xs.next()
+      if (currentRun == Nil || eqv.equiv(currentRun.head, x)) {
+        currentRun ::= x
+      } else {
+        ret += groupFn(currentRun)
+        currentRun = List(x)
+      }
+    }
+    if (currentRun != Nil)
+      ret += groupFn(currentRun)
     ret.result()
   }
 
