@@ -30,7 +30,7 @@ package object scala {
     val ib = b.buffered
 
     while (ia.hasNext && ib.hasNext) {
-      println(s"ia: ${ia.head}, ib: ${ib.head}")
+      //      println(s"ia: ${ia.head}, ib: ${ib.head}")
       ord.compare(ia.head, ib.head).signum match {
         case 0 =>
           ret += mergeFn(ia.next(), ib.next())

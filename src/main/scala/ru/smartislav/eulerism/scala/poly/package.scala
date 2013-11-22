@@ -47,9 +47,11 @@ package object poly {
 
     def isSimilarTo(other: Monomial): Boolean = powers == other.powers
 
-    def isDivisibleBy(other: Monomial): Boolean = other.c != Rational.zero && other.powers.forall({
-      case (v, p) => powers.getOrElse(v, Rational.zero) >= p
-    })
+    def isDivisibleBy(other: Monomial): Boolean = {
+      other.c != Rational.zero && other.powers.forall({
+        case (v, p) => p <= powers.getOrElse(v, Rational.zero)
+      })
+    }
 
     def lcm(other: Monomial): Monomial = {
       val vars = powers.map(_._1) ++ other.powers.map(_._1)
@@ -63,8 +65,9 @@ package object poly {
     val zero = new Monomial(Rational.zero, SortedMap.empty)
 
     def apply(c: Rational, powers: SortedMap[String, Rational]): Monomial = {
-      if (c == Rational.zero || powers.isEmpty) Monomial.zero
-      else new Monomial(c, powers)
+      val nonZeroPowers = powers.filter(_._2 != Rational.zero)
+      if (c == Rational.zero || nonZeroPowers.isEmpty) Monomial.zero
+      else new Monomial(c, nonZeroPowers)
     }
 
     def apply(c: Rational, powers: (String, Rational)*): Monomial = Monomial(c, SortedMap(powers: _*))
@@ -87,8 +90,8 @@ package object poly {
         val xPowers: Seq[Rational] = (commonVars map (x.powers.getOrElse(_, Rational.zero)))(breakOut)
         val yPowers: Seq[Rational] = (commonVars map (y.powers.getOrElse(_, Rational.zero)))(breakOut)
 
-//        println(s"xPowers: $xPowers")
-//        println(s"yPowers: $yPowers")
+        //        println(s"xPowers: $xPowers")
+        //        println(s"yPowers: $yPowers")
 
         Ordering.Iterable[Rational].compare(xPowers, yPowers)
       }
@@ -154,19 +157,18 @@ package object poly {
 
     def reduce(p: Polynomial): Polynomial = {
       val q = lt / p.lt
-      val pp = p * q
-      this - pp
+      this - p * q
     }
 
     @tailrec
     final def reduceByBasis(basis: Seq[Polynomial]): Polynomial = {
-      def step(reduced: Boolean): (Polynomial, Boolean) = {
+      def step(): (Polynomial, Boolean) = {
         if (this != Polynomial.zero)
-          for (p <- basis.find(isReducible))
+          for (p <- basis; if isReducible(p))
             return (reduce(p), true)
-        (this, reduced)
+        (this, false)
       }
-      val (reducedPoly: Polynomial, reduced: Boolean) = step(reduced = false)
+      val (reducedPoly: Polynomial, reduced: Boolean) = step()
       if (reduced)
         reducedPoly.reduceByBasis(basis)
       else
@@ -203,28 +205,38 @@ package object poly {
 
     def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
       @tailrec
-      def build(checked: Seq[Polynomial], left: Seq[Polynomial]): Seq[Polynomial] = {
-        if (left.isEmpty) {
-          checked
-        } else {
-          build()
+      def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
+        println(s"build($checked, $left)")
+        left match {
+          case l :: ls =>
+            build(l :: checked, ls ++ checkOne(l))
+          case Nil => checked
         }
       }
 
-
-      def checkOne(f: Polynomial): Seq[Polynomial] = {
+      def checkOne(f: Polynomial): List[Polynomial] = {
+        println(s"checkOne($f)")
         if (ps.isEmpty) {
-          Seq.empty
+          println(s"checkOne($f) = List()")
+          Nil
         } else {
-          var ret = Seq.empty
+          var ret: List[Polynomial] = Nil
           for (p <- ps.tails; if p.nonEmpty) {
+            println(s"checkOne($f): $p")
             val s = (f sPoly p.head) reduceByBasis (p ++ ret)
             if (s != Polynomial.zero)
-              ret :+= s
+              ret ::= s
           }
+          println(s"checkOne($f) = $ret")
+          ret
         }
-        ???
+      }
+
+      ps.toList match {
+        case h :: t => build(h :: Nil, t)
+        case Nil => Seq.empty
       }
     }
   }
+
 }

@@ -1,5 +1,7 @@
 package ru.smartislav.eulerism
 
-object MergeSpec {
+import org.scalatest.FlatSpec
+
+class MergeSpec extends FlatSpec {
 
 }
