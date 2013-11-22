@@ -8,7 +8,7 @@ object Test extends App {
     Monomial(Rational(4, 5), "y" -> Rational(1, 2), "z" -> Rational(2)))
 
   val poly2 = Polynomial(
-    Monomial(Rational.one, "y" -> Rational(1, 2), "x" -> Rational.one)
+    Monomial(Rational.one, "y" -> Rational(1, 3), "x" -> Rational.one)
   )
 
   println(s"poly1: $poly1")
@@ -23,4 +23,6 @@ object Test extends App {
   println(s"LT(poly2): ${poly2.lt}")
 
   println(Monomial(Rational.one, "x" -> Rational(2)) isDivisibleBy Monomial(Rational.one, "x" -> Rational.one))
+
+  println(s"Gröbner basis for <poly1, poly2>: ${Polynomial.gröbnerBasis(Seq(poly1, poly2))}")
 }
