@@ -1,12 +1,10 @@
 package ru.smartislav.eulerism.poly
 
-import org.specs2.mutable.Specification
-import org.specs2.ScalaCheck
-import org.specs2.specification.AllExpectations
 import org.scalacheck.{Gen, Prop}
 import ru.smartislav.eulerism.scala.poly.Polynomial
+import ru.smartislav.eulerism.SpecBase
 
-class PolynomialSpec extends Specification with ScalaCheck with AllExpectations {
+class PolynomialSpec extends SpecBase {
   "Addition and subtraction work for all polynomials" ! Prop.forAll(polynomial, polynomial) { (a, b) =>
     (a + b).mustEqual(b + a)
     ((a + b) - b).mustEqual(a)
@@ -25,9 +23,13 @@ class PolynomialSpec extends Specification with ScalaCheck with AllExpectations 
     a isReducible a must beTrue
   }
 
-  "Polynomial reduction by any basis terminates" ! Prop.forAll(nonZeroPolynomial, Gen.listOf(nonZeroPolynomial)) {
-    (p, b) =>
-  //    p reduceByBasis b
+  "Polynomial reduction by any basis terminates" ! Prop.forAll(nonZeroPolynomial, Gen.listOf(nonZeroPolynomial)) { (p, b) =>
+    p reduceByBasis b
     true must beTrue
   }
+
+  "Buchberger's algorithm on any system terminates" ! Prop.forAll(Gen.listOf(nonZeroPolynomial)) { (ps) =>
+    Polynomial.buchbergersAlgorithm(ps)
+    true must beTrue
+  }.set(minTestsOk = 1)
 }
