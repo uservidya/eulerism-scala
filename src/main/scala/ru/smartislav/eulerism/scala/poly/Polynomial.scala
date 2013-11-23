@@ -101,7 +101,7 @@ object Polynomial {
   def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
     @tailrec
     def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
-      println(s"build($checked, $left)")
+      //      println(s"build($checked, $left)")
       left match {
         case l :: ls =>
           build(l :: checked, ls ++ checkOne(l))
@@ -110,19 +110,19 @@ object Polynomial {
     }
 
     def checkOne(f: Polynomial): List[Polynomial] = {
-      println(s"checkOne($f)")
+      //      println(s"checkOne($f)")
       if (ps.isEmpty) {
-        println(s"checkOne($f) = List()")
+        //        println(s"checkOne($f) = List()")
         Nil
       } else {
         var ret: List[Polynomial] = Nil
         for (p <- ps.tails; if p.nonEmpty) {
-          println(s"checkOne($f): $p")
+          //          println(s"checkOne($f): $p")
           val s = (f sPoly p.head) reduceByBasis (p ++ ret)
           if (s != Polynomial.zero)
             ret ::= s
         }
-        println(s"checkOne($f) = $ret")
+        //        println(s"checkOne($f) = $ret")
         ret
       }
     }

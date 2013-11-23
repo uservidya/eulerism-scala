@@ -1,13 +1,11 @@
 package ru.smartislav.eulerism.poly
 
-import org.specs2.ScalaCheck
-import org.specs2.mutable.Specification
 import org.scalacheck.Prop
 import ru.smartislav.eulerism.scala.poly.Monomial
-import org.specs2.specification.AllExpectations
 import spire.math.Rational
+import ru.smartislav.eulerism.SpecBase
 
-class MonomialSpec extends Specification with ScalaCheck with AllExpectations {
+class MonomialSpec extends SpecBase {
   "Addition and subtraction work for all similar monomials" ! Prop.forAll(monomial, monomial) { (a, b) =>
     a.isSimilarTo(b) ==> {
       (a + b).mustEqual(b + a)
