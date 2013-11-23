@@ -28,8 +28,8 @@ class PolynomialSpec extends SpecBase {
     true must beTrue
   }
 
-  "Buchberger's algorithm on any system terminates" ! Prop.forAll(Gen.listOf(nonZeroPolynomial)) { (ps) =>
-    Polynomial.buchbergersAlgorithm(ps)
+  "Buchberger's algorithm on any system terminates" ! Prop.forAll(Gen.nonEmptyListOf(nonZeroPolynomial)) { (ps) =>
+  Polynomial.buchbergersAlgorithm(ps)
     true must beTrue
-  }.set(minTestsOk = 1)
+  }
 }

@@ -72,7 +72,7 @@ class Monomial private(val c: Rational, val powers: SortedMap[String, Rational])
 
   def nonZero: Boolean = this != Monomial.zero
 
-  def compare(that: Monomial): Int = Monomial.ExactOrdering.compare(this, that)
+  def compare(that: Monomial): Int = Monomial.PurelexExactOrdering.compare(this, that)
 
   override def equals(that: Any): Boolean = {
     if (!that.isInstanceOf[Monomial]) false
@@ -100,18 +100,19 @@ object Monomial {
 
   def apply(c: Rational, powers: (String, Rational)*): Monomial = Monomial(c, SortedMap(powers: _*))
 
-  object ExactOrdering extends Ordering[Monomial] {
-    def compare(x: Monomial, y: Monomial): Int = {
-      SimilarityOrdering.compare(x, y) match {
-        case 0 => x.c compareTo y.c
-        case r => r
-      }
+
+  abstract class ExactOrdering(ord: Ordering[Monomial]) extends Ordering[Monomial] {
+    def compare(x: Monomial, y: Monomial): Int = ord.compare(x, y) match {
+      case 0 => x.c compareTo y.c
+      case r => r
     }
   }
 
-  implicit val ReverseExactOrdering = ExactOrdering.reverse
+  object PurelexExactOrdering extends ExactOrdering(PurelexSimilarityOrdering)
 
-  object SimilarityOrdering extends Ordering[Monomial] {
+  implicit val ReversePurelexExactOrdering = PurelexExactOrdering.reverse
+
+  object PurelexSimilarityOrdering extends Ordering[Monomial] {
     def compare(x: Monomial, y: Monomial): Int = {
 
       val commonVars: SortedSet[String] = x.powers.keySet union y.powers.keySet
@@ -122,7 +123,7 @@ object Monomial {
     }
   }
 
-  val ReverseSimilarityOrdering = SimilarityOrdering.reverse
+  val ReversePurelexSimilarityOrdering = PurelexSimilarityOrdering.reverse
 
   implicit object DebugShow extends Show[Monomial] {
     override def show(m: Monomial): Cord = {
@@ -150,5 +151,4 @@ object Monomial {
       }
     }
   }
-
 }

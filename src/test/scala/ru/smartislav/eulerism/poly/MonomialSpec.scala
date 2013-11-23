@@ -59,4 +59,8 @@ class MonomialSpec extends SpecBase {
     (a / 1).mustEqual(a)
     (a / -1).mustEqual(-a)
   }
+
+  //  "Pure lexicographical ordering" ! Prop.forAll(Gen.listOf(monomial)) { (ms) =>
+  //
+  //  }
 }

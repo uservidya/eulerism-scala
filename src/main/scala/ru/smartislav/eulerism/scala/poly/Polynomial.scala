@@ -8,7 +8,7 @@ class Polynomial private(val monomials: Seq[Monomial]) {
   def lt = monomials.head
 
   def +(r: Polynomial): Polynomial = {
-    implicit val ord = Monomial.ReverseSimilarityOrdering
+    implicit val ord = Monomial.ReversePurelexSimilarityOrdering
     Polynomial(mergeWith(monomials, r.monomials)((a, b) => a + b): _*)
   }
 
@@ -44,7 +44,7 @@ class Polynomial private(val monomials: Seq[Monomial]) {
   @tailrec
   final def reduceByBasis(basis: Seq[Polynomial]): Polynomial = {
     def step(): (Polynomial, Boolean) = {
-      if (this != Polynomial.zero)
+      if (nonZero)
         for (p <- basis; if isReducible(p))
           return (reduce(p), true)
       (this, false)
@@ -80,14 +80,14 @@ object Polynomial {
   val one = Polynomial(Monomial.one)
 
   def apply(ms: Monomial*): Polynomial = {
-    implicit val ord = Monomial.ReverseSimilarityOrdering
+    implicit val ord = Monomial.ReversePurelexSimilarityOrdering
     ordered(groupRuns(ms.sorted.iterator)(_.reduce(_ + _)))
   }
 
   def ordered(ms: Seq[Monomial]): Polynomial = {
-    val nonZero = ms.filterNot(_ == Monomial.zero)
-    if (nonZero.isEmpty) zero
-    else new Polynomial(nonZero)
+    val nonZeroMs = ms.filter(_.nonZero)
+    if (nonZeroMs.isEmpty) zero
+    else new Polynomial(nonZeroMs)
   }
 
   implicit object DebugShow extends Show[Polynomial] {
@@ -101,29 +101,22 @@ object Polynomial {
   def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
     @tailrec
     def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
-      //      println(s"build($checked, $left)")
       left match {
         case l :: ls =>
-          build(l :: checked, ls ++ checkOne(l))
+          build(l :: checked, ls ++ checkOne(l, checked, left))
         case Nil => checked
       }
     }
 
-    def checkOne(f: Polynomial): List[Polynomial] = {
-      //      println(s"checkOne($f)")
-      if (ps.isEmpty) {
-        //        println(s"checkOne($f) = List()")
+    def checkOne(f: Polynomial, checked: List[Polynomial], left: List[Polynomial]): List[Polynomial] = {
+      if (checked.isEmpty) {
         Nil
       } else {
-        var ret: List[Polynomial] = Nil
-        for (p <- ps.tails; if p.nonEmpty) {
-          //          println(s"checkOne($f): $p")
-          val s = (f sPoly p.head) reduceByBasis (p ++ ret)
-          if (s != Polynomial.zero)
-            ret ::= s
-        }
-        //        println(s"checkOne($f) = $ret")
-        ret
+        val s = (f sPoly checked.head) reduceByBasis (checked ++ left)
+        if (s.nonZero)
+          checkOne(f, checked.tail, left)
+        else
+          s :: checkOne(f, checked.tail, s :: left)
       }
     }
 
