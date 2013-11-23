@@ -28,8 +28,14 @@ class PolynomialSpec extends SpecBase {
     true must beTrue
   }
 
+  "Check step doesn't crash on any system" ! Prop.forAll(nonZeroPolynomial, Gen.nonEmptyListOf(nonZeroPolynomial),
+    Gen.nonEmptyListOf(nonZeroPolynomial)) { (f, checked, left) =>
+    Polynomial.checkOne(f, checked, left)
+    true must beTrue
+  }
+
   "Buchberger's algorithm on any system terminates" ! Prop.forAll(Gen.nonEmptyListOf(nonZeroPolynomial)) { (ps) =>
-  Polynomial.buchbergersAlgorithm(ps)
+    Polynomial.buchbergersAlgorithm(ps)
     true must beTrue
   }
 }

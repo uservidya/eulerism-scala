@@ -57,8 +57,8 @@ class Polynomial private(val monomials: Seq[Monomial]) {
   }
 
   def sPoly(other: Polynomial): Polynomial = {
-    val glcm = this.lt lcm other.lt
-    this * (glcm / this.lt) - other * (glcm / other.lt)
+    val ltlcm = lt lcm other.lt
+    this * (ltlcm / lt) - other * (ltlcm / other.lt)
   }
 
   def isZero = monomials.isEmpty
@@ -98,28 +98,28 @@ object Polynomial {
 
   def gröbnerBasis(ps: Seq[Polynomial]): Seq[Polynomial] = buchbergersAlgorithm(ps)
 
+  @tailrec
+  private[poly] def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
+    left match {
+      case l :: ls =>
+        build(l :: checked, ls ++ checkOne(l, checked, left))
+      case Nil => checked
+    }
+  }
+
+  def checkOne(f: Polynomial, checked: List[Polynomial], left: List[Polynomial]): List[Polynomial] = {
+    if (checked.isEmpty) {
+      Nil
+    } else {
+      val s = (f sPoly checked.head) reduceByBasis (checked ++ left)
+      if (s.nonZero)
+        checkOne(f, checked.tail, left)
+      else
+        s :: checkOne(f, checked.tail, s :: left)
+    }
+  }
+
   def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
-    @tailrec
-    def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
-      left match {
-        case l :: ls =>
-          build(l :: checked, ls ++ checkOne(l, checked, left))
-        case Nil => checked
-      }
-    }
-
-    def checkOne(f: Polynomial, checked: List[Polynomial], left: List[Polynomial]): List[Polynomial] = {
-      if (checked.isEmpty) {
-        Nil
-      } else {
-        val s = (f sPoly checked.head) reduceByBasis (checked ++ left)
-        if (s.nonZero)
-          checkOne(f, checked.tail, left)
-        else
-          s :: checkOne(f, checked.tail, s :: left)
-      }
-    }
-
     ps.toList match {
       case h :: t => build(h :: Nil, t)
       case Nil => Seq.empty
