@@ -5,7 +5,7 @@ import scala.collection._
 import scala.{Array, Seq}
 import scalaz.{Cord, Show}
 
-class Monomial private(val c: Rational, val powers: SortedMap[String, Rational]) extends Ordered[Monomial] {
+class Monomial private(val c: Rational, val powers: SortedMap[String, Int]) extends Ordered[Monomial] {
   def *(factor: Rational): Monomial = Monomial(c * factor, powers)
 
   def /(factor: Rational): Monomial = Monomial(c / factor, powers)
@@ -40,7 +40,7 @@ class Monomial private(val c: Rational, val powers: SortedMap[String, Rational])
     val vars: SortedSet[String] = (powers.map(_._1) ++ other.powers.map(_._1))(breakOut)
     Monomial(c * other.c, (vars map {
       v =>
-        v -> (powers.getOrElse(v, Rational.zero) + other.powers.getOrElse(v, Rational.zero))
+        v -> (powers.getOrElse(v, 0) + other.powers.getOrElse(v, 0))
     }).toSeq: _*)
   }
 
@@ -49,7 +49,7 @@ class Monomial private(val c: Rational, val powers: SortedMap[String, Rational])
     val vars = powers.map(_._1) ++ other.powers.map(_._1)
     Monomial(c / other.c, (vars map {
       v =>
-        v -> (powers.getOrElse(v, Rational.zero) - other.powers.getOrElse(v, Rational.zero))
+        v -> (powers.getOrElse(v, 0) - other.powers.getOrElse(v, 0))
     }).toSeq: _*)
   }
 
@@ -57,22 +57,28 @@ class Monomial private(val c: Rational, val powers: SortedMap[String, Rational])
 
   def isDivisibleBy(other: Monomial): Boolean = {
     other.c != Rational.zero && other.powers.forall({
-      case (v, p) => p <= powers.getOrElse(v, Rational.zero)
+      case (v, p) => p <= powers.getOrElse(v, 0)
     })
   }
 
   def lcm(other: Monomial): Monomial = {
     val vars = powers.map(_._1) ++ other.powers.map(_._1)
     Monomial((c * other.c).abs / c.gcd(other.c), vars.map({
-      v => (v, Array(powers.getOrElse(v, Rational.zero), other.powers.getOrElse(v, Rational.zero)).max)
-    })(breakOut): SortedMap[String, Rational])
+      v => (v, Array(powers.getOrElse(v, 0), other.powers.getOrElse(v, 0)).max)
+    })(breakOut): SortedMap[String, Int])
+  }
+
+  def coprimeUpToCoeff(other: Monomial): Boolean = {
+    (powers.keySet intersect other.powers.keySet).isEmpty
   }
 
   def isZero: Boolean = this == Monomial.zero
 
   def nonZero: Boolean = this != Monomial.zero
 
-  def compare(that: Monomial): Int = Monomial.PurelexExactOrdering.compare(this, that)
+  def powerProduct: Monomial = new Monomial(Rational.one, powers)
+
+  def compare(that: Monomial): Int = Monomial.DefaultOrdering.compare(this, that)
 
   override def equals(that: Any): Boolean = {
     if (!that.isInstanceOf[Monomial]) false
@@ -88,18 +94,19 @@ object Monomial {
   val zero = new Monomial(Rational.zero, SortedMap.empty)
   val one = new Monomial(Rational.one, SortedMap.empty)
 
-  def apply(c: Rational, powers: SortedMap[String, Rational]): Monomial = {
+  def apply(c: Rational, powers: SortedMap[String, Int]): Monomial = {
     if (c == Rational.zero)
       return Monomial.zero
-    val nonZeroPowers = powers.filter(_._2 != Rational.zero)
+    val nonZeroPowers = powers.filter(_._2 != 0)
     if (nonZeroPowers.isEmpty && c == Rational.one)
       return Monomial.one
-    require(nonZeroPowers.values.forall(_ > Rational.zero))
+    require(nonZeroPowers.values.forall(_ > 0))
     new Monomial(c, nonZeroPowers)
   }
 
-  def apply(c: Rational, powers: (String, Rational)*): Monomial = Monomial(c, SortedMap(powers: _*))
+  def apply(c: Rational, powers: (String, Int)*): Monomial = Monomial(c, SortedMap(powers: _*))
 
+  def apply(powers: (String, Int)*): Monomial = Monomial(Rational.one, powers: _*)
 
   abstract class ExactOrdering(ord: Ordering[Monomial]) extends Ordering[Monomial] {
     def compare(x: Monomial, y: Monomial): Int = ord.compare(x, y) match {
@@ -110,45 +117,51 @@ object Monomial {
 
   object PurelexExactOrdering extends ExactOrdering(PurelexSimilarityOrdering)
 
-  implicit val ReversePurelexExactOrdering = PurelexExactOrdering.reverse
+  val ReversePurelexExactOrdering = PurelexExactOrdering.reverse
 
   object PurelexSimilarityOrdering extends Ordering[Monomial] {
     def compare(x: Monomial, y: Monomial): Int = {
 
       val commonVars: SortedSet[String] = x.powers.keySet union y.powers.keySet
-      val xPowers: Seq[Rational] = (commonVars map (x.powers.getOrElse(_, Rational.zero)))(breakOut)
-      val yPowers: Seq[Rational] = (commonVars map (y.powers.getOrElse(_, Rational.zero)))(breakOut)
+      val xPowers: Seq[Int] = (commonVars map (x.powers.getOrElse(_, 0)))(breakOut)
+      val yPowers: Seq[Int] = (commonVars map (y.powers.getOrElse(_, 0)))(breakOut)
 
-      Ordering.Iterable[Rational].compare(xPowers, yPowers)
+      Ordering.Iterable[Int].compare(xPowers, yPowers)
     }
   }
 
   val ReversePurelexSimilarityOrdering = PurelexSimilarityOrdering.reverse
 
+  implicit val DefaultExactOrdering = ReversePurelexExactOrdering
+
+  val DefaultOrdering = ReversePurelexSimilarityOrdering
+
   implicit object DebugShow extends Show[Monomial] {
     override def show(m: Monomial): Cord = {
       if (m.c == Rational.zero)
-        Cord.empty
+        Cord("0")
       else {
         val coeffCord =
-          if (m.c == Rational.one) {
-            if (m.powers.isEmpty)
-              Cord("1")
-            else
-              Cord.empty
-          } else Cord(m.c.toString, "*")
+          if (m.powers.isEmpty) {
+            Cord(m.c.toString)
+          } else {
+            if (m.c == Rational.one) {
+              Cord()
+            } else {
+              Cord(m.c.toString, "*")
+            }
+          }
 
         val powersCord = Cord.mkCord("*", m.powers.map({
           case (v, p) =>
-            if (p == Rational.one)
+            if (p == 1)
               Cord(v)
-            else if (p.isWhole())
-              Cord(v, "^", p.toString)
             else
-              Cord(v, "^(", p.toString, ")")
+              Cord(v, "^", p.toString)
         }).toSeq: _*)
         coeffCord ++ powersCord
       }
     }
   }
+
 }

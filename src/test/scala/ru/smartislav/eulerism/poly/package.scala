@@ -20,7 +20,7 @@ package object poly {
   def factors(min: Int = 0, max: Int = 6) = for {
     vsQty <- Gen.choose(min, max)
     vs <- Gen.pick(vsQty, Seq("u", "v", "w", "x", "y", "z"))
-    powers <- Gen.listOfN(vsQty, posRational)
+    powers <- Gen.listOfN(vsQty, Gen.choose(1, 10))
   } yield vs zip powers
 
   def monomial = for {

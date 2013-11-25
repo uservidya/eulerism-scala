@@ -3,12 +3,15 @@ package ru.smartislav.eulerism.scala.poly
 import ru.smartislav.eulerism.scala._
 import scala.annotation.tailrec
 import scalaz.{Cord, Show}
+import spire.math.Rational
 
 class Polynomial private(val monomials: Seq[Monomial]) {
-  def lt = monomials.head
+  def lm = monomials.head
+
+  lazy val lpp = lm.powerProduct
 
   def +(r: Polynomial): Polynomial = {
-    implicit val ord = Monomial.ReversePurelexSimilarityOrdering
+    implicit val ord = Monomial.DefaultOrdering
     Polynomial(mergeWith(monomials, r.monomials)((a, b) => a + b): _*)
   }
 
@@ -28,37 +31,46 @@ class Polynomial private(val monomials: Seq[Monomial]) {
     Polynomial((for (i <- monomials; j <- p.monomials) yield i * j): _*)
   }
 
+  def *(f: Rational): Polynomial = {
+    Polynomial(monomials map (_ * f): _*)
+  }
+
   def /(m: Monomial): Polynomial = {
     Polynomial(monomials map (_ / m): _*)
   }
 
+  def /(f: Rational): Polynomial = {
+    Polynomial(monomials map (_ / f): _*)
+  }
+
   def isReducible(p: Polynomial): Boolean = {
-    lt.isDivisibleBy(p.lt)
+    nonZero && p.nonZero && lm.isDivisibleBy(p.lm)
   }
 
   def reduce(p: Polynomial): Polynomial = {
-    val q = lt / p.lt
+    val q = lm / p.lm
     this - p * q
   }
 
   @tailrec
   final def reduceByBasis(basis: Seq[Polynomial]): Polynomial = {
-    def step(): (Polynomial, Boolean) = {
-      if (nonZero)
-        for (p <- basis; if isReducible(p))
-          return (reduce(p), true)
-      (this, false)
+    if (isZero) return this
+    basis.find(isReducible) match {
+      case Some(p) => reduce(p).reduceByBasis(basis)
+      case None => this
     }
-    val (reducedPoly: Polynomial, reduced: Boolean) = step()
-    if (reduced)
-      reducedPoly.reduceByBasis(basis)
-    else
-      reducedPoly
   }
 
   def sPoly(other: Polynomial): Polynomial = {
-    val ltlcm = lt lcm other.lt
-    this * (ltlcm / lt) - other * (ltlcm / other.lt)
+    val lpplcm = lpp lcm other.lpp
+    (this * lpplcm / lm) - (other * lpplcm / other.lm)
+  }
+
+  def normalize(): Polynomial = {
+    val coeff = lm.c
+    if (coeff == Rational.one)
+      return this
+    this / coeff
   }
 
   def isZero = monomials.isEmpty
@@ -80,7 +92,7 @@ object Polynomial {
   val one = Polynomial(Monomial.one)
 
   def apply(ms: Monomial*): Polynomial = {
-    implicit val ord = Monomial.ReversePurelexSimilarityOrdering
+    implicit val ord = Monomial.DefaultOrdering
     ordered(groupRuns(ms.sorted.iterator)(_.reduce(_ + _)))
   }
 
@@ -91,18 +103,24 @@ object Polynomial {
   }
 
   implicit object DebugShow extends Show[Polynomial] {
-    override def show(p: Polynomial): Cord = Cord.mkCord(" + ", (p.monomials map Monomial.DebugShow.show).toSeq: _*)
+    override def show(p: Polynomial): Cord = {
+      if (p.monomials.isEmpty) {
+        Cord("0")
+      } else {
+        Cord.mkCord(" + ", (p.monomials map Monomial.DebugShow.show).toSeq: _*)
+      }
+    }
   }
 
-  def groebnerBasis(ps: Seq[Polynomial]): Seq[Polynomial] = gröbnerBasis(ps)
+  def groebnerBasis(ps: Seq[Polynomial]): PolynomialBasis = gröbnerBasis(ps)
 
-  def gröbnerBasis(ps: Seq[Polynomial]): Seq[Polynomial] = buchbergersAlgorithm(ps)
+  def gröbnerBasis(ps: Seq[Polynomial]): PolynomialBasis = buchbergersAlgorithm(ps)
 
   @tailrec
   private[poly] def build(checked: List[Polynomial], left: List[Polynomial]): Seq[Polynomial] = {
     left match {
       case l :: ls =>
-        build(l :: checked, ls ++ checkOne(l, checked, left))
+        build(checked ++ List(l), ls ++ checkOne(l, checked, left))
       case Nil => checked
     }
   }
@@ -111,18 +129,28 @@ object Polynomial {
     if (checked.isEmpty) {
       Nil
     } else {
+      if (f.lpp coprimeUpToCoeff checked.head.lpp) // Product Criterion
+        return checkOne(f, checked.tail, left)
+
       val s = (f sPoly checked.head) reduceByBasis (checked ++ left)
       if (s.nonZero)
-        checkOne(f, checked.tail, left)
-      else
         s :: checkOne(f, checked.tail, s :: left)
+      else
+        checkOne(f, checked.tail, left)
     }
   }
 
-  def buchbergersAlgorithm(ps: Seq[Polynomial]): Seq[Polynomial] = {
+  def buchbergersAlgorithm(ps: Seq[Polynomial]): PolynomialBasis = {
     ps.toList match {
-      case h :: t => build(h :: Nil, t)
-      case Nil => Seq.empty
+      case h :: t => PolynomialBasis(build(List(h), t))
+      case Nil => PolynomialBasis(Seq.empty)
     }
   }
+
+  implicit object DefaultOrdering extends Ordering[Polynomial] {
+    def compare(x: Polynomial, y: Polynomial): Int = {
+      Ordering.Iterable[Monomial](Monomial.DefaultExactOrdering).compare(x.monomials, y.monomials)
+    }
+  }
+
 }
