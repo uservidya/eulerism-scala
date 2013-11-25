@@ -1,8 +1,7 @@
-package ru.smartislav.eulerism
+package ru.smartislav
 
 import org.scalacheck.Gen
 import spire.math.Rational
-import ru.smartislav.eulerism.scala.poly.{Polynomial, Monomial}
 
 package object poly {
   def rational(n: Gen[Long], d: Gen[Long]): Gen[Rational] = for {

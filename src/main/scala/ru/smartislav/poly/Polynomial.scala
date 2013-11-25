@@ -1,9 +1,9 @@
-package ru.smartislav.eulerism.scala.poly
+package ru.smartislav.poly
 
-import ru.smartislav.eulerism.scala._
 import scala.annotation.tailrec
 import scalaz.{Cord, Show}
 import spire.math.Rational
+import ru.smartislav.eulerism._
 
 class Polynomial private(val monomials: Seq[Monomial]) {
   def lm = monomials.head

@@ -1,9 +1,8 @@
-package ru.smartislav.eulerism.poly
+package ru.smartislav.poly
 
 import org.scalacheck.{Gen, Prop}
-import ru.smartislav.eulerism.scala.poly.{Monomial, Polynomial}
-import ru.smartislav.eulerism.SpecBase
 import spire.math.Rational
+import ru.smartislav.SpecBase
 
 class PolynomialSpec extends SpecBase {
   "Addition and subtraction work for all polynomials" ! Prop.forAll(polynomial, polynomial) { (a, b) =>
@@ -66,25 +65,35 @@ class PolynomialSpec extends SpecBase {
     // 8 y+8 y^2+2 y^3-4 z-4 y z-y^2 z+z^2, 4 y+2 y^2-2 z+x z-y z, 2 x+x y-z, x^2+2 y-z
     // from http://www.scholarpedia.org/article/Groebner_bases (section: Construction of Gröbner bases)
     val a = Polynomial(
-      Monomial("x" -> 1, "y" -> 1),
-      Monomial(Rational(2), "x" -> 1),
-      Monomial(-Rational.one, "z" -> 1))
+      Monomial("xy"),
+      Monomial(2, "x"),
+      Monomial(-1, "z"))
     val b = Polynomial(
-      Monomial("x" -> 2),
-      Monomial(Rational(2), "y" -> 1),
-      Monomial(-Rational.one, "z" -> 1))
+      Monomial("xx"),
+      Monomial(2, "y"),
+      Monomial(-1, "z"))
 
     val basis = Polynomial.gröbnerBasis(Seq(a, b)).reduce().normalize()
 
     val c = Polynomial(
-      Monomial(-Rational.one, "x" -> 1, "z" -> 1),
-      Monomial(Rational(-2), "y" -> 2),
-      Monomial("y" -> 1, "z" -> 1),
-      Monomial(Rational(-4), "y" -> 1),
-      Monomial(Rational(2), "z" -> 1)
+      Monomial(-1, "xz"),
+      Monomial(-2, "yy"),
+      Monomial("yz"),
+      Monomial(-4, "y"),
+      Monomial(2, "z")
     ).normalize()
 
-    basis.dims.sorted mustEqual Seq(a, b, c).sorted
+    val d = Polynomial(
+      Monomial(2, "yyy"),
+      Monomial(-1, "yyz"),
+      Monomial(8, "yy"),
+      Monomial(-4, "yz"),
+      Monomial(8, "y"),
+      Monomial("zz"),
+      Monomial(-4, "z")
+    )
+
+    basis.dims.sorted mustEqual Seq(a, b, c, d).sorted
     //    false must beTrue
   }
 }

@@ -1,7 +1,7 @@
-package ru.smartislav.eulerism.scala
+package ru.smartislav.eulerism
 
-import scala.collection.mutable
-import scala.collection.immutable.BitSet
+import _root_.scala.collection.immutable.BitSet
+import _root_.scala.collection.mutable
 
 
 object Problem5 extends App {

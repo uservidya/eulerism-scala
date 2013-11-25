@@ -1,9 +1,8 @@
-package ru.smartislav.eulerism.poly
+package ru.smartislav.poly
 
 import org.scalacheck.Prop
-import ru.smartislav.eulerism.scala.poly.Monomial
 import spire.math.Rational
-import ru.smartislav.eulerism.SpecBase
+import ru.smartislav.SpecBase
 
 class MonomialSpec extends SpecBase {
   "Addition and subtraction work for all similar monomials" ! Prop.forAll(monomial, monomial) { (a, b) =>

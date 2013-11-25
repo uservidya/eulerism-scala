@@ -1,5 +1,4 @@
-package ru.smartislav.eulerism.scala
-
+package ru.smartislav.eulerism
 
 object Problem3 extends App {
   val p = 600851475143l

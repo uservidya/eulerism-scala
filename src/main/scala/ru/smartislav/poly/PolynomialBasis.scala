@@ -1,4 +1,4 @@
-package ru.smartislav.eulerism.scala.poly
+package ru.smartislav.poly
 
 import scala.annotation.tailrec
 

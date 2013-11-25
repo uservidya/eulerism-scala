@@ -1,4 +1,4 @@
-package ru.smartislav.eulerism.scala
+package ru.smartislav.eulerism
 
 object Problem4 extends App {
   def is5or6DigitPalindrome(n: Int): Boolean = {

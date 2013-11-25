@@ -1,9 +1,10 @@
-package ru.smartislav.eulerism
+package ru.smartislav
 
-import _root_.scala.collection.generic.CanBuildFrom
-import _root_.scala.collection.{mutable, BitSet}
+import scala.collection.generic.CanBuildFrom
+import scala.collection.{mutable, BitSet}
+import scala.language.higherKinds
 
-package object scala {
+package object eulerism {
 
   def merge[A, That[_]](a: Iterable[A], b: Iterable[A])
                        (implicit ord: Ordering[A], bf: CanBuildFrom[_, A, That[A]]): That[A] = {
@@ -47,7 +48,8 @@ package object scala {
     ret.result()
   }
 
-  def groupRuns[X, That[_]](xs: Iterator[X])(groupFn: Seq[X] => X)(implicit eqv: Equiv[X], bf: CanBuildFrom[_, X, That[X]]): That[X] = {
+  def groupRuns[X, Y, That[_]](xs: Iterator[X])(groupFn: Seq[X] => Y)(implicit eqv: Equiv[X], bf: CanBuildFrom[_, Y,
+    That[Y]]): That[Y] = {
     val ret = bf()
     var currentRun: List[X] = Nil
     while (xs.hasNext) {

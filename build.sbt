@@ -7,6 +7,10 @@ version := "0.1"
 
 scalaVersion := "2.10.3"
 
+crossScalaVersions := Seq("2.9.3", "2.10.3", "2.11.0-M5")
+
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-optimise", "-Yinline-warnings")
+
 libraryDependencies ++= Seq(
   "org.spire-math" %% "spire" % "0.6.0",
   "org.scalaz" %% "scalaz-core" % "7.0.4",

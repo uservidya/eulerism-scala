@@ -1,9 +1,10 @@
-package ru.smartislav.eulerism.scala.poly
+package ru.smartislav.poly
 
 import spire.math.Rational
 import scala.collection._
 import scala.{Array, Seq}
 import scalaz.{Cord, Show}
+import ru.smartislav.eulerism
 
 class Monomial private(val c: Rational, val powers: SortedMap[String, Int]) extends Ordered[Monomial] {
   def *(factor: Rational): Monomial = Monomial(c * factor, powers)
@@ -107,6 +108,14 @@ object Monomial {
   def apply(c: Rational, powers: (String, Int)*): Monomial = Monomial(c, SortedMap(powers: _*))
 
   def apply(powers: (String, Int)*): Monomial = Monomial(Rational.one, powers: _*)
+
+  def apply(c: Rational, s: String): Monomial = {
+    Monomial(c, eulerism.groupRuns(s.sorted[Char].iterator) { (c) =>
+      c.head.toString -> c.length
+    }: _*)
+  }
+
+  def apply(s: String): Monomial = Monomial(Rational.one, s)
 
   abstract class ExactOrdering(ord: Ordering[Monomial]) extends Ordering[Monomial] {
     def compare(x: Monomial, y: Monomial): Int = ord.compare(x, y) match {
