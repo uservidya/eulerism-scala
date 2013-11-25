@@ -39,12 +39,11 @@ class MonomialSpec extends SpecBase {
   "lcm(a, b) is divisible by b" ! {
     val a = Monomial.one
     val b = Monomial(Rational(2),
-      "u" -> Rational(1, 10),
-      "v" -> Rational(3, 10),
-      "w" -> Rational(5, 4),
-      "x" -> Rational(3, 7),
-      "y" -> Rational(5))
-    //    2 * u ^ (1 / 10) * v ^ (3 / 10) * w ^ (5 / 4) * x ^ (3 / 7) * y ^ 5
+      "u" -> 1,
+      "v" -> 3,
+      "w" -> 12,
+      "x" -> 4,
+      "y" -> 41)
     val lcm = a lcm b
     lcm mustEqual b
     (lcm isDivisibleBy b) must beTrue
